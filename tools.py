@@ -111,15 +111,10 @@ def plot_stock_dashboard(stocks_data):
                 val = stock.get(metric)
                 
                 if metric == 'Trailing PE':
-                    # PE Ratio: optimal range 15-25, scale 8-50
+                    # PE Ratio: lower is better, use inverse ratio 10/PE
                     if isinstance(val, (int, float)) and val is not None and val > 0:
-                        if val <= 15:
-                            score = (val / 15) * 100  # 0-15 maps to 0-100
-                        elif val <= 25:
-                            score = 100  # 15-25 is optimal
-                        else:  # 25-50
-                            score = max(0, 100 - ((val - 25) / 25) * 100)
-                        radar_values.append(min(max(score, 0), 100))
+                        score = min((10 / val) * 100, 100)
+                        radar_values.append(score)
                     else:
                         radar_values.append(0)
                 elif metric == 'Institution %':
