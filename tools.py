@@ -103,22 +103,49 @@ def plot_stock_dashboard(stocks_data):
         
         with col2:
             st.write("**Valuation Radar**")
-            radar_metrics = ['Trailing PE', 'Forward PE', 'Price/Sales', 'Price/Book', 'Profit Margin', 'Operating Margin', 'Debt/Equity']
+            radar_metrics = ['Dividend Yield', 'Operating Margin', 'Trailing PE', 'Profit Margin', 'Institution %']
+            radar_display = ['Dividend Yield', 'Operating Margin', 'PE Ratio', 'Profit Margin', 'Institution %']
             radar_values = []
+            
             for metric in radar_metrics:
                 val = stock.get(metric)
-                if isinstance(val, (int, float)) and val is not None and val > 0:
-                    if metric in ['Profit Margin', 'Operating Margin']:
+                
+                if metric == 'Trailing PE':
+                    # Invert PE: lower is better, so 1/PE scaled to 0-100
+                    if isinstance(val, (int, float)) and val is not None and val > 0:
+                        radar_values.append(min(100 / val, 100))
+                    else:
+                        radar_values.append(0)
+                elif metric == 'Institution %':
+                    # Bell curve: sweet spot 10-30%, lower outside this range
+                    if isinstance(val, (int, float)) and val is not None:
+                        pct = val * 100 if val < 1 else val
+                        if 10 <= pct <= 30:
+                            score = 100
+                        elif pct < 10:
+                            score = (pct / 10) * 100
+                        else:  # pct > 30
+                            score = max(0, 100 * (1 - (pct - 30) / 70))
+                        radar_values.append(score)
+                    else:
+                        radar_values.append(0)
+                #if the metric is dividend yield, make 10% the higher amount since they don't go to high
+                elif metric == 'Dividend Yield':
+                    if isinstance(val, (int, float)) and val is not None and val > 0:
+                        radar_values.append(min(val * 1000, 100))
+                    else:
+                        radar_values.append(0)
+                else:
+                    # Operating Margin, Profit Margin
+                    if isinstance(val, (int, float)) and val is not None and val > 0:
                         radar_values.append(min(val * 100, 100))
                     else:
-                        radar_values.append(min(val, 100))
-                else:
-                    radar_values.append(0)
+                        radar_values.append(0)
             
             fig = go.Figure()
             fig.add_trace(go.Scatterpolar(
                 r=radar_values,
-                theta=radar_metrics,
+                theta=radar_display,
                 fill='toself',
                 name=stock.get('Symbol', 'Stock'),
                 line_color='rgb(0, 100, 200)',
