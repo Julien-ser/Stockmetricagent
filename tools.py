@@ -12,15 +12,66 @@ INDICATORS = [
     'Insider %', 'Institution %', 'Payout Ratio'
 ]
 
-def get_stock_metrics(symbol):
+# Regional stock suffixes
+REGIONAL_SUFFIXES = [
+    '.TO',  # Toronto Stock Exchange (Canada)
+    '.V',   # TSX Venture Exchange (Canada)
+    '.NS',  # NSE (India)
+    '.BO',  # BSE (India)
+    '.L',   # London Stock Exchange (UK)
+    '.HK',  # Hong Kong Stock Exchange
+    '.TW',  # Taiwan Stock Exchange
+    '.ST',  # Nasdaq Stockholm (Sweden)
+    '.AX',  # Australian Securities Exchange
+    '.NZ',  # New Zealand Stock Exchange
+    '.SG',  # Singapore Exchange
+    '.KL',  # Bursa Malaysia
+]
+
+def resolve_regional_stock_symbol(symbol):
+    """
+    Attempts to resolve a stock symbol by trying regional suffixes.
+    Returns the resolved symbol if found, otherwise returns the original symbol.
+    Also returns whether it was auto-resolved for UI feedback.
+    """
+    symbol = symbol.strip().upper()
+    
+    # First, check if the symbol as entered works
     try:
         ticker = yahooquery.Ticker(symbol)
         summary = ticker.summary_detail.get(symbol, {})
-        profile = ticker.asset_profile.get(symbol, {})
-        financial = ticker.financial_data.get(symbol, {})
-        stats = ticker.key_stats.get(symbol, {})
+        if summary:
+            return symbol, False  # Symbol found as-is
+    except:
+        pass
+    
+    # Try adding regional suffixes
+    for suffix in REGIONAL_SUFFIXES:
+        try:
+            test_symbol = symbol + suffix
+            ticker = yahooquery.Ticker(test_symbol)
+            summary = ticker.summary_detail.get(test_symbol, {})
+            if summary:
+                return test_symbol, True  # Symbol found with suffix
+        except:
+            continue
+    
+    # If no regional variant found, return the original symbol
+    return symbol, False
+
+def get_stock_metrics(symbol):
+    try:
+        # Resolve regional stock symbol
+        resolved_symbol, was_auto_resolved = resolve_regional_stock_symbol(symbol)
+        
+        ticker = yahooquery.Ticker(resolved_symbol)
+        summary = ticker.summary_detail.get(resolved_symbol, {})
+        profile = ticker.asset_profile.get(resolved_symbol, {})
+        financial = ticker.financial_data.get(resolved_symbol, {})
+        stats = ticker.key_stats.get(resolved_symbol, {})
         data = {
-            'Symbol': symbol.upper(),
+            'Symbol': resolved_symbol.upper(),
+            'Was_Auto_Resolved': was_auto_resolved,
             'Price': financial.get('currentPrice'),
             'Sector': profile.get('sector', 'N/A'),
             'Market Cap': summary.get('marketCap'),
