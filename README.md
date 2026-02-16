@@ -73,6 +73,58 @@ agentic_stock_dashboard/
    - Interactive dashboard visualizations
    - Sentiment analysis results
 
+## Agents & Tools
+
+### Core Agent: `stock_agent(query)`
+The main LangChain agent that orchestrates all tools. It:
+1. Parses user queries to extract stock symbols and analysis type
+2. Suggests relevant stocks for sector queries using LLM
+3. Fetches data and generates comprehensive insights
+4. Returns formatted analysis with visualizations
+
+### Tools Used by the Agent
+
+#### 1. **get_stock_metrics(symbol)**
+Fetches fundamental and valuation metrics for a stock using YahooQuery API.
+
+**Returns:**
+- Price, Market Cap, Enterprise Value
+- PE Ratios (Trailing & Forward)
+- Valuation ratios (Price/Sales, Price/Book, EV/Revenue, EV/Earnings)
+- Profitability margins (Profit Margin, Operating Margin)
+- Financial data (Revenue, Gross Profit, Debt, Debt/Equity)
+- Ownership metrics (Insider %, Institution %, Payout Ratio, Dividend Yield)
+
+#### 2. **get_sector_top_stocks(sector)**
+Retrieves top stocks within a given sector. Used to identify leading companies in industry sectors when users query broad categories.
+
+**Usage:** When user asks about sectors (e.g., "AI stocks", "Tech companies")
+
+#### 3. **get_sentiment(symbol)**
+Performs sentiment analysis on stock symbols using VADER (Valence Aware Dictionary and sEntiment Reasoner) from vaderSentiment library.
+
+**Returns:** Sentiment scores indicating positive/negative/neutral sentiment around a stock
+
+#### 4. **get_deepseek_insight(query)**
+Placeholder for AI-powered insights (currently returns template response). Can be extended to call external insight APIs.
+
+#### 5. **plot_stock_dashboard(stocks_data)**
+Creates interactive visualizations for stock data using Plotly.
+
+**Visualizations Generated:**
+- **Key Metrics Table** - Formatted display of all stock metrics with appropriate units ($, %, decimals)
+- **Valuation Radar Chart** - 5-axis radar chart comparing:
+  - Dividend Yield (ideal: 5%+)
+  - Operating Margin (ideal: 15-25%)
+  - PE Ratio (ideal: 15-25)
+  - Profit Margin (ideal: 15-25%)
+  - Institution Ownership (ideal: 33-34%)
+
+**Chart Features:**
+- Mobile-optimized (350px height, responsive margins)
+- Color-coded for visual appeal
+- Real-world metric ranges for accurate scoring
+
 ## Example Queries
 
 - "What are today's top performing stocks?"

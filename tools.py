@@ -111,34 +111,52 @@ def plot_stock_dashboard(stocks_data):
                 val = stock.get(metric)
                 
                 if metric == 'Trailing PE':
-                    # Invert PE: lower is better, so 1/PE scaled to 0-100
+                    # PE Ratio: optimal range 15-25, scale 8-50
                     if isinstance(val, (int, float)) and val is not None and val > 0:
-                        radar_values.append(min(100 / val, 100))
+                        if val <= 15:
+                            score = (val / 15) * 100  # 0-15 maps to 0-100
+                        elif val <= 25:
+                            score = 100  # 15-25 is optimal
+                        else:  # 25-50
+                            score = max(0, 100 - ((val - 25) / 25) * 100)
+                        radar_values.append(min(max(score, 0), 100))
                     else:
                         radar_values.append(0)
                 elif metric == 'Institution %':
-                    # Bell curve: sweet spot 10-30%, lower outside this range
+                    # Institution ownership: optimal 33-34%, real range 0-95%
                     if isinstance(val, (int, float)) and val is not None:
                         pct = val * 100 if val < 1 else val
-                        if 10 <= pct <= 30:
-                            score = 100
-                        elif pct < 10:
-                            score = (pct / 10) * 100
-                        else:  # pct > 30
-                            score = max(0, 100 * (1 - (pct - 30) / 70))
+                        if pct < 33:
+                            score = (pct / 33) * 100  # 0-33% maps to 0-100
+                        elif pct <= 34:
+                            score = 100  # 33-34% is optimal
+                        else:  # pct > 34
+                            score = max(0, 100 - ((pct - 34) / 61) * 100)  # 34-95% declining
                         radar_values.append(score)
                     else:
                         radar_values.append(0)
-                #if the metric is dividend yield, make 10% the higher amount since they don't go to high
                 elif metric == 'Dividend Yield':
-                    if isinstance(val, (int, float)) and val is not None and val > 0:
-                        radar_values.append(min(val * 1000, 100))
+                    # Dividend Yield: over 5% is optimal (100), scales down from there
+                    if isinstance(val, (int, float)) and val is not None and val >= 0:
+                        dividend_pct = val * 100 if val < 1 else val
+                        if dividend_pct >= 5:
+                            score = 100  # Over 5% is ideal
+                        else:  # 0-5%
+                            score = (dividend_pct / 5) * 100  # scales from 0 to 100
+                        radar_values.append(score)
                     else:
                         radar_values.append(0)
                 else:
-                    # Operating Margin, Profit Margin
+                    # Operating Margin & Profit Margin: optimal 15-25%, realistic 5-35%
                     if isinstance(val, (int, float)) and val is not None and val > 0:
-                        radar_values.append(min(val * 100, 100))
+                        margin_pct = val * 100 if val < 1 else val
+                        if margin_pct <= 15:
+                            score = (margin_pct / 15) * 100
+                        elif margin_pct <= 25:
+                            score = 100
+                        else:  # 25-35%
+                            score = max(0, 100 - ((margin_pct - 25) / 10) * 20)
+                        radar_values.append(score)
                     else:
                         radar_values.append(0)
             
@@ -155,7 +173,8 @@ def plot_stock_dashboard(stocks_data):
                 polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
                 showlegend=False,
                 title=f"Radar - {stock.get('Symbol', 'N/A')}",
-                height=500
+                height=350,
+                margin=dict(l=40, r=40, t=40, b=40)
             )
             st.plotly_chart(fig, use_container_width=True)
         
