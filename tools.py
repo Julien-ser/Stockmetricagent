@@ -39,10 +39,12 @@ def resolve_regional_stock_symbol(symbol):
     # First, check if the symbol as entered works
     try:
         ticker = yahooquery.Ticker(symbol)
-        summary = ticker.summary_detail.get(symbol, {})
-        if summary:
+        financial = ticker.financial_data.get(symbol, {})
+        # Check if we actually got valid data (dict with keys, not empty or string)
+        if isinstance(financial, dict) and financial and 'currentPrice' in financial:
             return symbol, False  # Symbol found as-is
-    except:
+    except Exception as e:
+        print(f"[DEBUG RESOLVE] Failed to resolve {symbol} as-is: {e}")
         pass
     
     # Try adding regional suffixes
@@ -50,28 +52,45 @@ def resolve_regional_stock_symbol(symbol):
         try:
             test_symbol = symbol + suffix
             ticker = yahooquery.Ticker(test_symbol)
-            summary = ticker.summary_detail.get(test_symbol, {})
-            if summary:
+            financial = ticker.financial_data.get(test_symbol, {})
+            # Check if we actually got valid data (dict with keys, not empty or string)
+            if isinstance(financial, dict) and financial and 'currentPrice' in financial:
+                print(f"[DEBUG RESOLVE] Found {test_symbol} with suffix {suffix}")
                 return test_symbol, True  # Symbol found with suffix
-        except:
+        except Exception as e:
+            print(f"[DEBUG RESOLVE] Failed to resolve {symbol}{suffix}: {e}")
             continue
     
     # If no regional variant found, return the original symbol
+    print(f"[DEBUG RESOLVE] Could not resolve {symbol} with any suffix, returning original")
     return symbol, False
 
 def get_stock_metrics(symbol):
     try:
         # Resolve regional stock symbol
         resolved_symbol, was_auto_resolved = resolve_regional_stock_symbol(symbol)
+        print(f"[DEBUG GET_METRICS] Using symbol: {resolved_symbol}, auto_resolved: {was_auto_resolved}")
         
         ticker = yahooquery.Ticker(resolved_symbol)
         summary = ticker.summary_detail.get(resolved_symbol, {})
         profile = ticker.asset_profile.get(resolved_symbol, {})
         financial = ticker.financial_data.get(resolved_symbol, {})
         stats = ticker.key_stats.get(resolved_symbol, {})
+        
+        # Validate data types
+        if not isinstance(summary, dict):
+            summary = {}
+        if not isinstance(profile, dict):
+            profile = {}
+        if not isinstance(financial, dict):
+            financial = {}
+        if not isinstance(stats, dict):
+            stats = {}
+        
+        print(f"[DEBUG GET_METRICS] Got data - summary: {bool(summary)}, profile: {bool(profile)}, financial: {bool(financial)}")
+        
         data = {
             'Symbol': resolved_symbol.upper(),
-            'Was_Auto_Resolved': was_auto_resolved,
             'Price': financial.get('currentPrice'),
             'Sector': profile.get('sector', 'N/A'),
             'Market Cap': summary.get('marketCap'),
@@ -94,8 +113,12 @@ def get_stock_metrics(symbol):
             'Dividend Yield': summary.get('dividendYield')
         }
         filtered_data = {k: data.get(k) for k in INDICATORS}
+        print(f"[DEBUG GET_METRICS] Returning data for {resolved_symbol}")
         return filtered_data
     except Exception as e:
+        print(f"[DEBUG TOOLS] Error in get_stock_metrics for {symbol}: {str(e)}")
+        import traceback
+        print(f"[DEBUG TOOLS] Traceback: {traceback.format_exc()}")
         return None
 
 def get_sector_top_stocks(sector):
